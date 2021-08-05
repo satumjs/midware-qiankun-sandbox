@@ -22,7 +22,7 @@ function uniq(array: Array<string | symbol>) {
 const rawObjectDefineProperty = Object.defineProperty;
 
 const variableWhiteListInDev =
-  process.env.NODE_ENV === 'development' || window.__QIANKUN_DEVELOPMENT__
+  process.env.NODE_ENV === 'development' || window['__QIANKUN_DEVELOPMENT__']
     ? [
         // for react hot reload
         // see https://github.com/facebook/create-react-app/blob/66bf7dfc43350249e2f09d138a20840dae8a0a4a/packages/react-error-overlay/src/index.js#L180
@@ -146,9 +146,7 @@ export default class ProxySandbox implements SandBox {
 
   inactive() {
     if (process.env.NODE_ENV === 'development') {
-      console.info(`[qiankun:sandbox] ${this.name} modified global properties restore...`, [
-        ...this.updatedValueSet.keys(),
-      ]);
+      console.info(`[qiankun:sandbox] ${this.name} modified global properties restore...`, [...this.updatedValueSet.keys()]);
     }
 
     if (--activeSandboxCount === 0) {
@@ -234,11 +232,7 @@ export default class ProxySandbox implements SandBox {
           return proxy;
         }
 
-        if (
-          p === 'top' ||
-          p === 'parent' ||
-          (process.env.NODE_ENV === 'test' && (p === 'mockTop' || p === 'mockSafariTop'))
-        ) {
+        if (p === 'top' || p === 'parent' || (process.env.NODE_ENV === 'test' && (p === 'mockTop' || p === 'mockSafariTop'))) {
           // if your master app in an iframe context, allow these props escape the sandbox
           if (rawWindow === rawWindow.parent) {
             return proxy;
@@ -264,11 +258,7 @@ export default class ProxySandbox implements SandBox {
         }
 
         // eslint-disable-next-line no-nested-ternary
-        const value = propertiesWithGetter.has(p)
-          ? (rawWindow as any)[p]
-          : p in target
-          ? (target as any)[p]
-          : (rawWindow as any)[p];
+        const value = propertiesWithGetter.has(p) ? (rawWindow as any)[p] : p in target ? (target as any)[p] : (rawWindow as any)[p];
         return getTargetValue(rawWindow, value);
       },
 

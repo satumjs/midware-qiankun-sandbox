@@ -1,4 +1,5 @@
 import commonjs from '@rollup/plugin-commonjs';
+import injectProcessEnv from 'rollup-plugin-inject-process-env';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import { babel } from '@rollup/plugin-babel';
 import { terser } from 'rollup-plugin-terser';
@@ -8,6 +9,7 @@ const plugins = [
   commonjs(),
   nodeResolve({ extensions }),
   babel({ extensions, include: ['./src/**/*'] }),
+  injectProcessEnv({ NODE_ENV: process.env.NODE_ENV }),
   terser(),
 ];
 
