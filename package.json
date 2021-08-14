@@ -9,7 +9,9 @@
     "build": "rimraf lib && rollup -c",
     "build:w": "npm run build -- -w"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@satumjs/types": "^0.0.1-experimental-0.1"
+  },
   "devDependencies": {
     "@babel/cli": "^7.14.8",
     "@babel/core": "^7.14.8",
@@ -21,6 +23,7 @@
     "@umijs/fabric": "^2.6.2",
     "rimraf": "^3.0.2",
     "rollup": "^2.54.0",
+    "rollup-plugin-dts": "^3.0.2",
     "rollup-plugin-inject-process-env": "^1.3.1",
     "rollup-plugin-terser": "^7.0.2",
     "tslib": "^2.3.0",

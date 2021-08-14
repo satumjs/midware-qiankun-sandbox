@@ -22,5 +22,5 @@
     "allowJs": true,
     "moduleResolution": "Node"
   },
-  "exclude": ["node_modules", "./**/coverage/**/*", "./**/jest.config.js"]
+  "exclude": ["node_modules", "lib", "./**/coverage/**/*", "./**/jest.config.js"]
 }
