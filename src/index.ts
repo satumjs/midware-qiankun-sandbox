@@ -9,10 +9,10 @@ function getArray(item: any) {
 class QiankunSandbox implements ISandbox {
   readonly root: ContainerFn;
   readonly actorId: string;
-  readonly execScripts: (proxy: Window, useLooseSandbox: boolean) => Promise<any>;
   private _body: HTMLElement;
   private _watcher: MutationObserver;
   private useLooseSandbox: boolean;
+  private execScripts: (proxy: Window, useLooseSandbox: boolean) => Promise<any>;
   vmContext: FakeWindow;
 
   static setExtra: () => KeyObject<any>;
@@ -21,8 +21,7 @@ class QiankunSandbox implements ISandbox {
     this.root = root;
     this.actorId = actorId;
 
-    const { execScripts, useLooseSandbox } = extra;
-    this.execScripts = execScripts;
+    const { useLooseSandbox } = extra;
     this.useLooseSandbox = useLooseSandbox !== undefined ? useLooseSandbox : true;
   }
 
@@ -32,6 +31,11 @@ class QiankunSandbox implements ISandbox {
 
   get watcher(): MutationObserver {
     return this._watcher;
+  }
+
+  extend(extra: KeyObject<any>) {
+    const { execScripts } = extra;
+    this.execScripts = execScripts;
   }
 
   async init(processSpecialElement: (body: HTMLElement) => void, rootNode?: HTMLElement) {
@@ -59,16 +63,11 @@ class QiankunSandbox implements ISandbox {
       codes = getArray(code);
     }
 
-    switch (type) {
-      case FileType.HTML:
-        const template = codes.map(({ source }) => source).join('\n');
-        this.body.innerHTML = template;
-        break;
-      case FileType.CSS:
-        break;
-      case FileType.JS:
-        await this.execScripts(this.vmContext, !this.useLooseSandbox);
-        break;
+    if (type === FileType.HTML) {
+      const template = codes.map(({ source }) => source).join('\n');
+      this.body.innerHTML = template;
+    } else if (type === FileType.JS) {
+      return await this.execScripts(this.vmContext, !this.useLooseSandbox);
     }
   }
 
@@ -84,6 +83,8 @@ class QiankunSandbox implements ISandbox {
 }
 
 export default function qiankunSandboxMidware(system: MidwareSystem, _: RealMicroApp[], next: NextFn) {
+  window['DRIVE_BY_MICROF2E'] = true;
+  window['__POWERED_BY_QIANKUN__'] = true;
   const { useLooseSandbox } = system.options;
   QiankunSandbox.setExtra = () => ({ useLooseSandbox });
   system.set('sandbox', QiankunSandbox);
