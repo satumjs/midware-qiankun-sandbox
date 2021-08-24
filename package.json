@@ -1,6 +1,6 @@
 {
   "name": "@satumjs/midware-qiankun-sandbox",
-  "version": "0.0.1-experimental-0.1",
+  "version": "0.0.1-experimental-0.2",
   "description": "qiankun sandbox for satum-micro",
   "main": "lib/index.js",
   "module": "lib/index.es.js",
@@ -11,7 +11,7 @@
     "pub": "npm run build && npm publish --access public"
   },
   "dependencies": {
-    "@satumjs/types": "^0.0.1-experimental-0.1",
+    "@satumjs/types": "^0.0.1",
     "qiankun": "^2.4.9"
   },
   "devDependencies": {
