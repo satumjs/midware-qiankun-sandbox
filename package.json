@@ -11,7 +11,8 @@
     "pub": "npm run build && npm publish --access public"
   },
   "dependencies": {
-    "@satumjs/types": "^0.0.1-experimental-0.1"
+    "@satumjs/types": "^0.0.1-experimental-0.1",
+    "qiankun": "^2.4.9"
   },
   "devDependencies": {
     "@babel/cli": "^7.14.8",

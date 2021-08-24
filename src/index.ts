@@ -1,5 +1,5 @@
 import { ISandbox, MidwareSystem, RealMicroApp, NextFn, ContainerFn, FileType, AppFileSourceItem, FakeWindow, KeyObject } from '@satumjs/types';
-import { createSandboxContainer } from './sandbox';
+import { createSandboxContainer } from 'qiankun/es/sandbox';
 
 function getArray(item: any) {
   if (!item) return [];
@@ -10,8 +10,8 @@ class QiankunSandbox implements ISandbox {
   readonly root: ContainerFn;
   readonly actorId: string;
   private _body: HTMLElement;
-  private _watcher: MutationObserver;
   private useLooseSandbox: boolean;
+  private scopedCSS: boolean;
   private execScripts: (proxy: Window, useLooseSandbox: boolean) => Promise<any>;
   vmContext: FakeWindow;
 
@@ -21,16 +21,13 @@ class QiankunSandbox implements ISandbox {
     this.root = root;
     this.actorId = actorId;
 
-    const { useLooseSandbox } = extra;
-    this.useLooseSandbox = useLooseSandbox !== undefined ? useLooseSandbox : true;
+    const { useLooseSandbox, scopedCSS } = extra;
+    this.useLooseSandbox = !!useLooseSandbox;
+    this.scopedCSS = !!scopedCSS;
   }
 
   get body(): HTMLElement {
     return this._body;
-  }
-
-  get watcher(): MutationObserver {
-    return this._watcher;
   }
 
   extend(extra: KeyObject<any>) {
@@ -38,19 +35,15 @@ class QiankunSandbox implements ISandbox {
     this.execScripts = execScripts;
   }
 
-  async init(processSpecialElement: (body: HTMLElement) => void, rootNode?: HTMLElement) {
+  async init() {
     if (!this._body) {
-      const sandboxContainer = createSandboxContainer(this.actorId, this.useLooseSandbox);
-      this.vmContext = sandboxContainer.proxy as typeof window;
+      const elementGetter = () => this.body;
+      const sandboxContainer = createSandboxContainer(this.actorId, elementGetter, this.scopedCSS, this.useLooseSandbox);
+      this.vmContext = sandboxContainer.instance.proxy as typeof window;
 
       const appBody = this.vmContext.document.createElement('satum-micro');
       appBody.setAttribute('data-actor-id', this.actorId);
       this._body = appBody;
-    }
-    if (processSpecialElement) {
-      const watchRoot = rootNode || this.body;
-      this._watcher = new MutationObserver(() => processSpecialElement(watchRoot));
-      this.watcher.observe(watchRoot, { subtree: true, childList: true });
     }
   }
 
@@ -67,26 +60,18 @@ class QiankunSandbox implements ISandbox {
       const template = codes.map(({ source }) => source).join('\n');
       this.body.innerHTML = template;
     } else if (type === FileType.JS) {
-      return await this.execScripts(this.vmContext, !this.useLooseSandbox);
+      return await this.execScripts(this.vmContext, this.useLooseSandbox);
     }
   }
 
-  async render() {
-    const root = await this.root();
-    if (root) root.appendChild(this.body);
-  }
-
-  destory() {
+  async destory() {
     this.body.parentNode?.removeChild(this.body);
-    if (this.watcher) this.watcher.disconnect();
   }
 }
 
 export default function qiankunSandboxMidware(system: MidwareSystem, _: RealMicroApp[], next: NextFn) {
-  window['DRIVE_BY_MICROF2E'] = true;
-  window['__POWERED_BY_QIANKUN__'] = true;
-  const { useLooseSandbox } = system.options;
-  QiankunSandbox.setExtra = () => ({ useLooseSandbox });
-  system.set('sandbox', QiankunSandbox);
+  const { useLooseSandbox, scopedCSS } = system.options;
+  QiankunSandbox.setExtra = () => ({ useLooseSandbox, scopedCSS });
+  system.set('Sandbox', QiankunSandbox);
   next();
 }
