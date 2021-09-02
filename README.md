@@ -1,4 +1,4 @@
-# `@satumjs/midware-qiankun-sandbox`
+# @satumjs/midware-qiankun-sandbox
 
 qiankun-sandbox midware for satum-micro
 
@@ -10,5 +10,5 @@ import midwareQiankunSandbox from '@satumjs/midware-qiankun-sandbox';
 satumCore.use(midwareQiankunSandbox);
 
 // use options
-// satumCore.use(midwareQiankunSandbox, { useLooseSandbox: true });
+// satumCore.use(midwareQiankunSandbox, { useQiankunStart: true, useLooseSandbox: true });
 ```
