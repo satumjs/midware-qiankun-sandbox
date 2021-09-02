@@ -1,5 +1,6 @@
 import { ISandbox, MidwareSystem, RealMicroApp, NextFn, ContainerFn, FileType, AppFileSourceItem, FakeWindow, KeyObject } from '@satumjs/types';
 import { createSandboxContainer } from 'qiankun/es/sandbox';
+import { registerApplication, start as startSingleSpa, RegisterApplicationConfig } from 'single-spa';
 
 function getArray(item: any) {
   if (!item) return [];
@@ -7,7 +8,6 @@ function getArray(item: any) {
 }
 
 class QiankunSandbox implements ISandbox {
-  readonly root: ContainerFn;
   readonly actorId: string;
   private _body: HTMLElement;
   private useLooseSandbox: boolean;
@@ -17,11 +17,10 @@ class QiankunSandbox implements ISandbox {
 
   static setExtra: () => KeyObject<any>;
 
-  constructor(root: ContainerFn, actorId: string, extra: KeyObject<any>) {
-    this.root = root;
+  constructor(actorId: string, extra: KeyObject<any>) {
     this.actorId = actorId;
 
-    const { useLooseSandbox, scopedCSS } = extra;
+    const { useLooseSandbox, scopedCSS } = extra || {};
     this.useLooseSandbox = !!useLooseSandbox;
     this.scopedCSS = !!scopedCSS;
   }
@@ -40,6 +39,8 @@ class QiankunSandbox implements ISandbox {
       const elementGetter = () => this.body;
       const sandboxContainer = createSandboxContainer(this.actorId, elementGetter, this.scopedCSS, this.useLooseSandbox);
       this.vmContext = sandboxContainer.instance.proxy as typeof window;
+      this.vmContext.__POWERED_BY_QIANKUN__ = true;
+      this.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__ = this.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__ || '';
 
       const appBody = this.vmContext.document.createElement('satum-micro');
       appBody.setAttribute('data-actor-id', this.actorId);
@@ -64,14 +65,25 @@ class QiankunSandbox implements ISandbox {
     }
   }
 
+  async prerender(root: ContainerFn) {
+    const rootNode = await root();
+    if (rootNode) rootNode.appendChild(this.body);
+  }
+
   async destory() {
     this.body.parentNode?.removeChild(this.body);
   }
 }
 
-export default function qiankunSandboxMidware(system: MidwareSystem, _: RealMicroApp[], next: NextFn) {
-  const { useLooseSandbox, scopedCSS } = system.options;
+export default function qiankunSandboxMidware(system: MidwareSystem, microApps: RealMicroApp[], next: NextFn) {
+  const { useQiankunStart, useLooseSandbox, scopedCSS } = system.options;
   QiankunSandbox.setExtra = () => ({ useLooseSandbox, scopedCSS });
   system.set('Sandbox', QiankunSandbox);
+  if (useQiankunStart) {
+    microApps.forEach(({ name, app, activeWhen, customProps }) => {
+      registerApplication({ name, app, activeWhen, customProps } as RegisterApplicationConfig);
+    });
+    system.set('start', startSingleSpa);
+  }
   next();
 }
