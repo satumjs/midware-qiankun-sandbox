@@ -1,6 +1,6 @@
 {
   "name": "@satumjs/midware-qiankun-sandbox",
-  "version": "0.0.3",
+  "version": "0.0.4-rc.0",
   "description": "qiankun sandbox for satum-micro",
   "main": "lib/index.js",
   "module": "lib/index.es.js",

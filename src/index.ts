@@ -17,7 +17,9 @@ class QiankunSandbox implements ISandbox {
 
   static setExtra: () => KeyObject<any>;
 
-  constructor(actorId: string, extra: KeyObject<any>) {
+  constructor(actorIds: string[], extra: KeyObject<any>) {
+    let [oldActorId, actorId] = actorIds;
+    actorId = actorId || oldActorId;
     this.actorId = actorId;
 
     const { useLooseSandbox, scopedCSS } = extra || {};
@@ -32,6 +34,11 @@ class QiankunSandbox implements ISandbox {
   extend(extra: KeyObject<any>) {
     const { execScripts } = extra;
     this.execScripts = execScripts;
+  }
+
+  clone(actorId: string) {
+    const { useLooseSandbox, scopedCSS, actorId: oldActorId } = this;
+    return new QiankunSandbox([oldActorId, actorId], { useLooseSandbox, scopedCSS });
   }
 
   async init() {
