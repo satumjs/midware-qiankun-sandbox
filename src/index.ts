@@ -1,4 +1,16 @@
-import { ISandbox, MidwareSystem, RealMicroApp, NextFn, ContainerFn, FileType, AppFileSourceItem, FakeWindow, KeyObject } from '@satumjs/types';
+import {
+  ISandbox,
+  MidwareSystem,
+  RealMicroApp,
+  NextFn,
+  ContainerFn,
+  FileType,
+  AppFileSourceItem,
+  FakeWindow,
+  KeyObject,
+  fakeBodyTag,
+  SandboxGetCode,
+} from '@satumjs/types';
 import { createSandboxContainer } from 'qiankun/es/sandbox';
 import { registerApplication, start as startSingleSpa, RegisterApplicationConfig } from 'single-spa';
 
@@ -25,6 +37,12 @@ class QiankunSandbox implements ISandbox {
     const { useLooseSandbox, scopedCSS } = extra || {};
     this.useLooseSandbox = !!useLooseSandbox;
     this.scopedCSS = !!scopedCSS;
+
+    const elementGetter = () => this.body;
+    const sandboxContainer = createSandboxContainer(this.actorId, elementGetter, this.scopedCSS, this.useLooseSandbox);
+    this.vmContext = sandboxContainer.instance.proxy as typeof window;
+    this.vmContext.__POWERED_BY_QIANKUN__ = true;
+    this.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__ = this.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__ || '';
   }
 
   get body(): HTMLElement {
@@ -38,24 +56,20 @@ class QiankunSandbox implements ISandbox {
 
   clone(actorId: string) {
     const { useLooseSandbox, scopedCSS, actorId: oldActorId } = this;
-    return new QiankunSandbox([oldActorId, actorId], { useLooseSandbox, scopedCSS });
+    const qkSandbox = new QiankunSandbox([oldActorId, actorId], { useLooseSandbox, scopedCSS });
+    qkSandbox.init();
+    return qkSandbox;
   }
 
   async init() {
     if (!this._body) {
-      const elementGetter = () => this.body;
-      const sandboxContainer = createSandboxContainer(this.actorId, elementGetter, this.scopedCSS, this.useLooseSandbox);
-      this.vmContext = sandboxContainer.instance.proxy as typeof window;
-      this.vmContext.__POWERED_BY_QIANKUN__ = true;
-      this.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__ = this.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__ || '';
-
-      const appBody = this.vmContext.document.createElement('satum-micro');
+      const appBody = this.vmContext.document.createElement(fakeBodyTag);
       appBody.setAttribute('data-actor-id', this.actorId);
       this._body = appBody;
     }
   }
 
-  async exec(getCode: () => Promise<AppFileSourceItem | AppFileSourceItem[]>, type?: FileType) {
+  async exec(getCode: SandboxGetCode, type?: FileType) {
     type = type || FileType.JS;
     let codes: AppFileSourceItem | AppFileSourceItem[] = [];
 
