@@ -34,15 +34,19 @@ class QiankunSandbox implements ISandbox {
     actorId = actorId || oldActorId;
     this.actorId = actorId;
 
-    const { useLooseSandbox, scopedCSS } = extra || {};
+    const { useLooseSandbox, scopedCSS, vmContext } = extra || {};
     this.useLooseSandbox = !!useLooseSandbox;
     this.scopedCSS = !!scopedCSS;
 
-    const elementGetter = () => this.body;
-    const sandboxContainer = createSandboxContainer(this.actorId, elementGetter, this.scopedCSS, this.useLooseSandbox);
-    this.vmContext = sandboxContainer.instance.proxy as typeof window;
-    this.vmContext.__POWERED_BY_QIANKUN__ = true;
-    this.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__ = this.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__ || '';
+    if (vmContext) {
+      this.vmContext = vmContext;
+    } else {
+      const elementGetter = () => this.body;
+      const sandboxContainer = createSandboxContainer(this.actorId, elementGetter, this.scopedCSS, this.useLooseSandbox);
+      this.vmContext = sandboxContainer.instance.proxy as typeof window;
+      this.vmContext.__POWERED_BY_QIANKUN__ = true;
+      this.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__ = this.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__ || '';
+    }
   }
 
   get body(): HTMLElement {
@@ -55,10 +59,8 @@ class QiankunSandbox implements ISandbox {
   }
 
   clone(actorId: string) {
-    const { useLooseSandbox, scopedCSS, actorId: oldActorId } = this;
-    const qkSandbox = new QiankunSandbox([oldActorId, actorId], { useLooseSandbox, scopedCSS });
-    qkSandbox.init();
-    return qkSandbox;
+    const { useLooseSandbox, scopedCSS, actorId: oldActorId, vmContext } = this;
+    return new QiankunSandbox([oldActorId, actorId], { useLooseSandbox, scopedCSS, vmContext });
   }
 
   async init() {
