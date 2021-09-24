@@ -45,7 +45,6 @@ class QiankunSandbox implements ISandbox {
       const sandboxContainer = createSandboxContainer(this.actorId, elementGetter, this.scopedCSS, this.useLooseSandbox);
       this.vmContext = sandboxContainer.instance.proxy as typeof window;
       this.vmContext.__POWERED_BY_QIANKUN__ = true;
-      this.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__ = this.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__ || '';
     }
   }
 
@@ -54,8 +53,9 @@ class QiankunSandbox implements ISandbox {
   }
 
   extend(extra: KeyObject<any>) {
-    const { execScripts } = extra;
+    const { execScripts, assetPublicPath } = extra;
     this.execScripts = execScripts;
+    this.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__ = assetPublicPath || '/';
   }
 
   clone(actorId: string) {
