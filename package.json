@@ -1,6 +1,6 @@
 {
   "name": "@satumjs/midware-qiankun-sandbox",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "qiankun sandbox for satum-micro",
   "main": "lib/index.js",
   "module": "lib/index.es.js",
@@ -34,6 +34,10 @@
     "ts-jest": "^27.0.5",
     "typescript": "^4.3.5"
   },
+  "files": [
+    "lib",
+    "LICENSE"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/satumjs/midware-qiankun-sandbox.git"
