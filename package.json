@@ -1,9 +1,10 @@
 {
   "name": "@satumjs/midware-qiankun-sandbox",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "qiankun sandbox for satum-micro",
   "main": "lib/index.js",
   "module": "lib/index.es.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "test": "rimraf coverage && jest --coverage",
     "build": "rimraf lib && rollup -c",
