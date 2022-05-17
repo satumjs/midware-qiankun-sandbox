@@ -1,20 +1,9 @@
-import {
-  ISandbox,
-  TSandboxConfig,
-  FileType,
-  FakeWindow,
-  KeyObject,
-  fakeTagName,
-  fakeWrapTagName,
-  AppFileSourceItem,
-  SandboxGetCode,
-  MidwareSystem,
-  IMicroApp,
-  NextFn,
-  MidwareName,
+/* prettier-ignore */ import {
+  ISandbox, TSandboxConfig, FileType, FakeWindow, KeyObject, AppFileSourceItem, SandboxGetCode,
+  MidwareSystem, IMicroApp, NextFn, MidwareName, fakeTagName, fakeWrapTagName,
 } from '@satumjs/types';
-import { createSandboxContainer } from 'qiankun/es/sandbox';
-import { registerApplication, start as startSingleSpa, RegisterApplicationConfig } from 'single-spa';
+import { isFullUrl, toPromise } from '@satumjs/utils';
+import { createSandboxContainer, RegisterApplicationConfig, singleSpa } from '@satumjs/x-qiankun';
 
 class QiankunSandbox implements ISandbox {
   static microApps: IMicroApp[];
@@ -43,16 +32,14 @@ class QiankunSandbox implements ISandbox {
   get vmContext() {
     if (this._vmContext) return this._vmContext;
 
-    const { scopedCSS, useLooseSandbox, setValueIntoWin } = QiankunSandbox.options;
+    const { scopedCSS, useLooseSandbox, winVariable } = QiankunSandbox.options;
     const elementGetter = () => this.body;
     const sandboxContainer = createSandboxContainer(this.actorId, elementGetter, scopedCSS, useLooseSandbox);
     const fakeWin = sandboxContainer.instance.proxy as FakeWindow;
     fakeWin['microRealWindow'] = window;
-    fakeWin['__POWERED_BY_QIANKUN__'] = true;
-    fakeWin['DRIVE_BY_MICROF2E'] = true;
 
-    if (typeof setValueIntoWin === 'function') {
-      setValueIntoWin(fakeWin);
+    if (typeof winVariable === 'function') {
+      winVariable(fakeWin, window);
     }
 
     this._vmContext = fakeWin;
@@ -67,8 +54,9 @@ class QiankunSandbox implements ISandbox {
 
   init() {
     if (!this._body) {
-      const appBody = this.vmContext.document.createElement(fakeTagName);
-      const wrapper = document.createElement(fakeWrapTagName);
+      const vmDocument = this.vmContext.document;
+      const appBody = vmDocument.createElement(fakeTagName);
+      const wrapper = vmDocument.createElement(fakeWrapTagName);
       appBody.appendChild(wrapper);
       this._body = appBody;
     }
@@ -79,25 +67,36 @@ class QiankunSandbox implements ISandbox {
     type = type || FileType.JS;
     const { useLooseSandbox } = QiankunSandbox.options;
 
-    if (type !== FileType.CSS) {
-      return getCode().then((code: AppFileSourceItem[]) => {
-        const codes = code ? (Array.isArray(code) ? code : [code]) : [];
-        let result;
-        switch (type) {
-          case FileType.HTML:
-            const template = codes.map(({ source }) => source).join('\n');
-            if (this.body.firstChild) (this.body.firstChild as HTMLElement).innerHTML = template;
-            break;
-          case FileType.CSS:
-            break;
-          case FileType.JS:
-            result = this.execScripts(this.vmContext, !useLooseSandbox);
-            break;
-        }
-        return Promise.resolve(result);
-      });
+    if (type === FileType.JS) {
+      return toPromise(this.execScripts(this.vmContext, !useLooseSandbox));
     }
-    return Promise.resolve();
+
+    return getCode().then((code: AppFileSourceItem[]) => {
+      const codes = code ? (Array.isArray(code) ? code : [code]) : [];
+      switch (type) {
+        case FileType.HTML:
+          const template = codes.map(({ source }) => source).join('\n');
+          const wrapper = this.body.querySelector(fakeWrapTagName);
+          if (wrapper) wrapper.innerHTML = template;
+          break;
+        case FileType.CSS:
+          const embedStyles = (<any>window).embedStylesIntoTemplate;
+          if (!embedStyles) {
+            const wrapper = this.body.querySelector(fakeWrapTagName);
+            codes.forEach(({ file, source }) => {
+              if (!source) return;
+              const style = this.vmContext.document.createElement('style');
+              if (isFullUrl(file)) style.setAttribute('data-url', file);
+              if (typeof source === 'string') {
+                style.innerHTML = source;
+                this.body.insertBefore(style, wrapper);
+              }
+            });
+          }
+          break;
+      }
+      return Promise.resolve();
+    });
   }
 
   remove() {
@@ -118,9 +117,9 @@ export default function qiankunSandboxMidware(system: MidwareSystem, microApps: 
   if (useQiankunStart) {
     system.set(MidwareName.start, () => {
       microApps.forEach(({ name, app, activeWhen, customProps }) => {
-        registerApplication({ name, app, activeWhen, customProps } as RegisterApplicationConfig);
+        singleSpa.register({ name, app, activeWhen, customProps } as RegisterApplicationConfig);
       });
-      typeof urlRerouteOnly === 'undefined' ? startSingleSpa() : startSingleSpa({ urlRerouteOnly });
+      typeof urlRerouteOnly === 'undefined' ? singleSpa.start() : singleSpa.start({ urlRerouteOnly });
     });
   }
   next();
