@@ -1,6 +1,6 @@
 {
   "name": "@satumjs/midware-qiankun-sandbox",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "qiankun sandbox for satum-micro",
   "main": "lib/index.js",
   "module": "lib/index.es.js",
@@ -9,11 +9,12 @@
     "test": "rimraf coverage && jest --coverage",
     "build": "rimraf lib && rollup -c",
     "build:w": "npm run build -- -w",
-    "pub": "npm run build && npm publish --access public"
+    "pub": "npm run build && npm publish --access public",
+    "prepare": "husky install"
   },
   "dependencies": {
-    "@satumjs/types": "^0.1.2",
-    "@satumjs/utils": "^0.1.2",
+    "@satumjs/types": "^0.1.7",
+    "@satumjs/utils": "^0.1.7",
     "@satumjs/x-qiankun": "^2.7.0"
   },
   "devDependencies": {
@@ -25,8 +26,9 @@
     "@rollup/plugin-commonjs": "^19.0.2",
     "@rollup/plugin-node-resolve": "^13.0.4",
     "@types/jest": "^27.0.1",
-    "@umijs/fabric": "^2.6.2",
+    "@umijs/fabric": "2.10.2",
     "coveralls": "^3.1.1",
+    "husky": "^8.0.1",
     "jest": "^27.1.1",
     "rimraf": "^3.0.2",
     "rollup": "^2.54.0",
