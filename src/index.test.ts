@@ -1,130 +1,162 @@
 jest.mock('@satumjs/x-qiankun');
-import { FakeWindow, FileType, MidwareName } from '@satumjs/types';
+import { FileType } from '@satumjs/types';
 import { createSandboxContainer, singleSpa } from '@satumjs/x-qiankun';
 import qiankunSandboxMidware from '.';
 
 describe('@satumjs/midware-qiankun-sandbox test', () => {
-  test('register/start', () => {
-    const configs = {} as any;
-    const set = (cfgName: MidwareName, cfgValue: any) => (configs[cfgName] = cfgValue);
-    const fakeSystem = { options: {}, set } as any;
-    const microApps: any[] = [{ name: 'test' }, { name: 'foo' }];
+  let Sandbox: any;
+  beforeEach(() => {
+    const fakeSystem = { options: {}, set: jest.fn() } as any;
+    const microApps: any[] = [{ name: 'foo' }, { name: 'bar' }];
     const next = jest.fn();
 
     qiankunSandboxMidware(fakeSystem, microApps, next);
-    expect(MidwareName.Sandbox in configs).toBe(true);
+    expect(fakeSystem.set).toBeCalled();
 
-    fakeSystem.options = { useQiankunStart: true };
-    qiankunSandboxMidware(fakeSystem, microApps, next);
-    expect(MidwareName.start in configs).toBe(true);
-    configs[MidwareName.start]();
-    expect(singleSpa.register).toHaveBeenCalledTimes(2);
-    expect(singleSpa.start).toHaveBeenCalledTimes(1);
+    Sandbox = fakeSystem.set.mock.calls[0][1];
+    (createSandboxContainer as any).mockReturnValueOnce({ instance: { proxy: {} } });
   });
 
   test('new Sandbox', () => {
-    const configs = {} as any;
-    const set = (cfgName: MidwareName, cfgValue: any) => (configs[cfgName] = cfgValue);
-    const fakeSystem = { options: {}, set } as any;
-    const microApps: any[] = [{ name: 'test' }, { name: 'foo' }];
-    const next = jest.fn();
-    qiankunSandboxMidware(fakeSystem, microApps, next);
-
     const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => 1234);
-    const sandbox1 = new configs[MidwareName.Sandbox]();
-    expect('appName' in sandbox1).toBe(true);
-    expect(sandbox1.appName).toBe(undefined);
-    expect(sandbox1.actorId).toBe(undefined);
-    expect(sandbox1.fakeWindowName).toBe('fakeWindow1234');
+    const sandbox = new Sandbox();
+    expect('appName' in sandbox).toBe(true);
+    expect(sandbox.appName).toBe(undefined);
+    expect(sandbox.actorId).toBe(undefined);
+    expect(sandbox.fakeWindowName).toBe('fakeWindow1234');
+    expect(sandbox.body).toBeUndefined();
+
+    expect(sandbox.vmContext === window[sandbox.fakeWindowName]).toBe(true);
+    expect(sandbox.vmContext['DRIVE_BY_SATUMMICRO']).toBe(true);
     dateSpy.mockRestore();
   });
 
-  const childNode = {} as HTMLElement;
-  const fakeBody = {
-    appendChild: jest.fn() as any,
-    parentNode: {
-      removeChild: jest.fn() as any,
-    },
-    querySelector: (jest.fn() as any).mockReturnValue(childNode),
-    insertBefore: jest.fn() as any,
-    setAttribute: jest.fn() as any,
-  } as HTMLElement;
+  test('init/destory', () => {
+    const sandbox = new Sandbox({ appName: 'foo', actorId: 'foo' });
+    const appBody = { appendChild: jest.fn() } as any;
+    const wrapper = {} as any;
+    const createElement = jest.fn();
 
-  const fakeSandboxContainer = {
-    instance: {
-      proxy: {
-        document: {},
-      } as FakeWindow,
-    },
-  };
-
-  test('extend/destory', () => {
-    const configs = {} as any;
-    const set = (cfgName: MidwareName, cfgValue: any) => (configs[cfgName] = cfgValue);
-    const fakeSystem = { options: { winVariable: jest.fn() }, set } as any;
-    const microApps: any[] = [{ name: 'test' }, { name: 'foo' }];
-    const next = jest.fn();
-    qiankunSandboxMidware(fakeSystem, microApps, next);
-
-    const sandboxConfig = { appName: 'aaa', actorId: 'aaa_bbb', fakeWindowName: 'fakewin' };
-    const sandbox2 = new configs[MidwareName.Sandbox](sandboxConfig);
-    expect(sandbox2.appName).toBe(sandboxConfig.appName);
-    expect(sandbox2.actorId).toBe(sandboxConfig.actorId);
-    expect(sandbox2.fakeWindowName).toBe(sandboxConfig.fakeWindowName);
-
-    createSandboxContainer['mockReturnValue'](fakeSandboxContainer);
-    fakeSandboxContainer.instance.proxy.document.createElement = (jest.fn() as any).mockReturnValue(fakeBody);
-    sandbox2.init().then(() => {
-      const mockCreateElement = fakeSandboxContainer.instance.proxy.document.createElement as any;
-      expect(sandbox2.body).toBe(fakeBody);
-      expect(fakeSystem.options.winVariable).toHaveBeenCalledTimes(1);
-      expect(mockCreateElement).toBeCalledTimes(2);
-
-      const execScripts = jest.fn().mockReturnValue('aaa');
-      sandbox2.extend({ execScripts, assetPublicPath: '/aaa' });
-      expect(sandbox2.execScripts).toEqual(execScripts);
-      expect(sandbox2.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__).toBe('/aaa');
-      sandbox2.destory().then(() => expect(fakeBody.parentNode?.removeChild).toHaveBeenCalled());
+    sandbox.vmContext.document = { createElement };
+    createElement.mockReturnValueOnce(appBody).mockReturnValueOnce(wrapper);
+    sandbox.init().then(() => {
+      expect(sandbox.body).toEqual(appBody);
+      expect(createElement).toBeCalledTimes(2);
+      appBody.parentNode = null;
+      sandbox.destory().then(() => {
+        appBody.parentNode = { removeChild: jest.fn() };
+        sandbox.destory().then(() => expect(appBody.parentNode?.removeChild).toBeCalled());
+      });
     });
   });
 
-  test('runScript', () => {
-    const configs = {} as any;
-    const set = (cfgName: MidwareName, cfgValue: any) => (configs[cfgName] = cfgValue);
-    const fakeSystem = { options: { winVariable: jest.fn() }, set } as any;
-    const microApps: any[] = [{ name: 'test' }, { name: 'foo' }];
-    const next = jest.fn();
+  test('exec simply', () => {
+    const sandbox = new Sandbox({ appName: 'foo', actorId: 'foo' });
 
+    sandbox.extend({} as any);
+    const execScripts = jest.fn().mockReturnValue('bbb');
+    sandbox.extend({ execScripts, assetPublicPath: '/aaa' });
+    expect(sandbox.execScripts).toEqual(execScripts);
+    expect(sandbox.vmContext.__INJECTED_PUBLIC_PATH_BY_QIANKUN__).toBe('/aaa');
+
+    (<any>window).embedStylesIntoTemplate = true;
+    sandbox.exec(jest.fn().mockResolvedValue('aaa'), FileType.CSS).then((res: any) => expect(res).toBe('aaa'));
+    sandbox.exec(jest.fn().mockResolvedValue(''), FileType.CSS).then((res: any) => expect(res).toBe(''));
+    sandbox.exec(jest.fn()).then((res: any) => {
+      expect(execScripts).toBeCalled();
+      expect(res).toBe('bbb');
+    });
+  });
+});
+
+describe('@satumjs/midware-qiankun-sandbox options test', () => {
+  const fakeSystem = { options: { useQiankunStart: true } } as any;
+  const microApps: any[] = [{ name: 'foo' }, { name: 'bar' }];
+  const next = jest.fn();
+
+  test('useQiankunStart', () => {
+    fakeSystem.set = jest.fn();
     qiankunSandboxMidware(fakeSystem, microApps, next);
-    const sandbox3 = new configs[MidwareName.Sandbox]();
+    expect(fakeSystem.set).toBeCalledTimes(2); // set sandbox & start
+    const fnStart = fakeSystem.set.mock.calls[1][1];
+    fnStart && fnStart();
+    expect(singleSpa.register).toBeCalledTimes(2);
+  });
 
-    fakeSandboxContainer.instance.proxy.document.createElement = (jest.fn() as any).mockReturnValue(fakeBody);
-    sandbox3.init().then(() => {
-      const mockCreateElement = fakeSandboxContainer.instance.proxy.document.createElement as any;
-      const execScripts = jest.fn().mockReturnValue('aaa');
-      sandbox3.extend({ execScripts });
+  test('urlRerouteOnly', () => {
+    fakeSystem.set = jest.fn();
+    fakeSystem.options.urlRerouteOnly = true;
+    qiankunSandboxMidware(fakeSystem, microApps, next);
+    expect(fakeSystem.set).toBeCalledTimes(2);
+    fakeSystem.set.mock.calls[1][1]();
+  });
 
-      const getCode1 = () => Promise.resolve();
-      sandbox3.exec(getCode1).then((res: any) => expect(res).toBe('aaa'));
+  test('mergeWinProperty', () => {
+    fakeSystem.set = jest.fn();
+    fakeSystem.options.mergeWinProperty = jest.fn();
+    qiankunSandboxMidware(fakeSystem, microApps, next);
+    const Sandbox = fakeSystem.set.mock.calls[0][1];
+    const createSandbox = createSandboxContainer as any;
+    createSandbox.mockReturnValueOnce({ instance: { proxy: {} } });
 
-      const getCode2 = () => Promise.resolve([{ source: 'aaa' }, { source: 'bbb' }]);
-      sandbox3.exec(getCode2, FileType.HTML).then(() => {
-        expect(fakeBody.querySelector).toHaveBeenCalled();
-        expect(childNode.innerHTML).toBe('aaa\nbbb');
-      });
+    const sandbox = new Sandbox();
+    expect(!sandbox.vmContext).toEqual(false);
+    expect(createSandbox).toBeCalled();
+    expect(fakeSystem.options.mergeWinProperty).toBeCalled();
+    createSandbox.mock.calls[0][1]();
+  });
+});
 
-      (<any>window).embedStylesIntoTemplate = true;
-      const getCode3 = () => Promise.resolve({});
-      sandbox3.exec(getCode3, FileType.CSS).then(() => expect(fakeBody.querySelector).toBeCalledTimes(3));
+describe('@satumjs/midware-qiankun-sandbox runScript test', () => {
+  let sandbox: any;
+  let fakeDoc: any;
+  let appBody: HTMLElement;
+  let wrapper: HTMLElement;
+  beforeEach(() => {
+    const fakeSystem = { options: {}, set: jest.fn() } as any;
+    const microApps: any[] = [{ name: 'foo' }, { name: 'bar' }];
+    const next = jest.fn();
+    qiankunSandboxMidware(fakeSystem, microApps, next);
+    expect(fakeSystem.set).toBeCalled();
+
+    const Sandbox = fakeSystem.set.mock.calls[0][1];
+    sandbox = new Sandbox({ appName: 'foo', actorId: 'foo', fakeWindowName: 'foo' });
+
+    fakeDoc = { createElement: jest.fn(), createTextNode: jest.fn() } as any;
+    wrapper = {} as HTMLElement;
+    appBody = { querySelector: jest.fn(), insertBefore: jest.fn(), setAttribute: jest.fn() } as any;
+    sandbox._body = appBody;
+    (createSandboxContainer as any).mockReturnValue({ instance: { proxy: { document: fakeDoc } } });
+  });
+
+  test('runScript html', (done) => {
+    (appBody.querySelector as any).mockReturnValue(wrapper);
+    const getHtmlCodes = () => Promise.resolve([{ source: 'aaa' }, { source: 'bbb' }]);
+    sandbox.exec(getHtmlCodes as any, FileType.HTML).then(() => {
+      expect(appBody.querySelector).toHaveBeenCalled();
+      expect(wrapper.innerHTML).toBe('aaa\nbbb');
+      done();
+    });
+  });
+
+  test('runScript css', (done) => {
+    (<any>window).embedStylesIntoTemplate = true;
+    const getCssCode1 = () => Promise.resolve({});
+    sandbox.exec(getCssCode1 as any, FileType.CSS).then(() => {
+      expect(appBody.querySelector).toBeCalledTimes(0);
 
       (<any>window).embedStylesIntoTemplate = false;
+      (appBody.querySelector as any).mockReturnValueOnce(wrapper);
+      const styleNode = { appendChild: jest.fn(), setAttribute: jest.fn() } as any;
+      fakeDoc.createElement.mockReturnValueOnce(styleNode);
       const fakeCssFile = { file: '//www.bat.com/aaa.css', source: 'body{font-size:12px}' };
-      const getCode4 = () => Promise.resolve(fakeCssFile);
-      sandbox3.exec(getCode4, FileType.CSS).then(() => {
-        expect(fakeBody.querySelector).toBeCalledTimes(3);
-        expect(mockCreateElement).toBeCalledTimes(3);
-        expect(fakeBody.innerHTML).toBe(fakeCssFile.source);
-        expect(fakeBody.setAttribute).toBeCalledWith('data-url', fakeCssFile.file);
+      const getCssCode2 = () => Promise.resolve([fakeCssFile, {}]);
+      sandbox.exec(getCssCode2 as any, FileType.CSS).then(() => {
+        expect(appBody.querySelector).toBeCalledTimes(1);
+        expect(fakeDoc.createElement).toBeCalledTimes(1);
+        expect(styleNode.setAttribute).toBeCalledWith('data-url', fakeCssFile.file);
+        expect(styleNode.innerHTML).toBe(fakeCssFile.source);
+        done();
       });
     });
   });

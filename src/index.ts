@@ -32,17 +32,18 @@ class QiankunSandbox implements ISandbox {
   get vmContext() {
     if (this._vmContext) return this._vmContext;
 
-    const { scopedCSS, useLooseSandbox, winVariable } = QiankunSandbox.options;
+    const { scopedCSS, useLooseSandbox, mergeWinProperty } = QiankunSandbox.options;
     const elementGetter = () => this.body;
     const sandboxContainer = createSandboxContainer(this.actorId, elementGetter, scopedCSS, useLooseSandbox);
     const fakeWin = sandboxContainer.instance.proxy as FakeWindow;
     fakeWin['microRealWindow'] = window;
+    fakeWin['DRIVE_BY_SATUMMICRO'] = true;
 
-    if (typeof winVariable === 'function') {
-      winVariable(fakeWin, window);
+    if (typeof mergeWinProperty === 'function') {
+      mergeWinProperty(fakeWin, window);
     }
 
-    this._vmContext = fakeWin;
+    window[this.fakeWindowName] = this._vmContext = fakeWin;
     return fakeWin;
   }
 
@@ -95,7 +96,7 @@ class QiankunSandbox implements ISandbox {
           }
           break;
       }
-      return Promise.resolve();
+      return Promise.resolve(code);
     });
   }
 
